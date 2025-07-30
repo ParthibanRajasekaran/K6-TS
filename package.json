@@ -1,0 +1,29 @@
+{
+  "name": "k6-ts",
+  "version": "1.0.0",
+  "main": "index.js",
+  "description": "K6 TypeScript Load Testing with Advanced HTML Reporting",
+  "scripts": {
+    "build": "esbuild src/tests/*.ts --bundle --platform=neutral --outdir=dist --format=cjs --external:k6 --external:k6/*",
+    "test:basic": "npm run build && k6 run dist/basic-test.js",
+    "test:api": "npm run build && k6 run dist/api-test.js",
+    "test:stress": "npm run build && k6 run dist/stress-test.js",
+    "test:load": "npm run build && k6 run dist/load-test.js",
+    "test:all": "npm run build && npm run test:basic && npm run test:api && npm run test:stress && npm run test:load",
+    "test:runner": "./run-test.sh",
+    "report:generate": "node scripts/generate-report.js",
+    "clean": "rm -rf dist reports"
+  },
+  "keywords": ["k6", "load-testing", "performance", "typescript"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/k6": "^1.1.1",
+    "esbuild": "^0.25.8",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "chart.js": "^4.4.1",
+    "date-fns": "^3.3.1"
+  }
+}

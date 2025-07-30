@@ -1,0 +1,555 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K6 Load Test Report - K6 Load Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 300;
+        }
+        
+        .header .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .nav {
+            background: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .nav ul {
+            list-style: none;
+            display: flex;
+            gap: 2rem;
+        }
+        
+        .nav a {
+            text-decoration: none;
+            color: #667eea;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav a:hover, .nav a.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        
+        .summary-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-left: 4px solid #667eea;
+        }
+        
+        .summary-card h3 {
+            color: #667eea;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            padding: 0.3rem 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .metric:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-label {
+            font-weight: 500;
+            color: #555;
+        }
+        
+        .metric-value {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .metric-value.success {
+            color: #27ae60;
+        }
+        
+        .metric-value.warning {
+            color: #f39c12;
+        }
+        
+        .metric-value.error {
+            color: #e74c3c;
+        }
+        
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .chart-container {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .chart-container h3 {
+            margin-bottom: 1rem;
+            color: #333;
+            font-size: 1.2rem;
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+        
+        .details-section {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .details-section h2 {
+            color: #667eea;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+        
+        .statistics-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        .statistics-table th,
+        .statistics-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .statistics-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .statistics-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-success {
+            background: #27ae60;
+        }
+        
+        .status-warning {
+            background: #f39c12;
+        }
+        
+        .status-error {
+            background: #e74c3c;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+            border-top: 1px solid #eee;
+            margin-top: 3rem;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .nav ul {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+            
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>K6 Performance Test Report</h1>
+        <div class="subtitle">
+            K6 Load Test • 7/29/2025 7:38:50 AM
+        </div>
+    </div>
+    
+    <nav class="nav">
+        <ul>
+            <li><a href="#overview" class="active">Overview</a></li>
+            <li><a href="#charts">Charts</a></li>
+            <li><a href="#details">Details</a></li>
+            <li><a href="#statistics">Statistics</a></li>
+        </ul>
+    </nav>
+    
+    <div class="container">
+        <section id="overview">
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <h3>Test Information</h3>
+                    <div class="metric">
+                        <span class="metric-label">Test Name</span>
+                        <span class="metric-value">K6 Load Test</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Start Time</span>
+                        <span class="metric-value">7/29/2025, 7:38:50 AM</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Duration</span>
+                        <span class="metric-value">600s</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Max VUs</span>
+                        <span class="metric-value">100</span>
+                    </div>
+                </div>
+                
+                <div class="summary-card">
+                    <h3>Response Times</h3>
+                    <div class="metric">
+                        <span class="metric-label">Average</span>
+                        <span class="metric-value">245.67ms</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Median</span>
+                        <span class="metric-value">234.45ms</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">95th Percentile</span>
+                        <span class="metric-value warning">567.89ms</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">99th Percentile</span>
+                        <span class="metric-value success">890.12ms</span>
+                    </div>
+                </div>
+                
+                <div class="summary-card">
+                    <h3>Request Statistics</h3>
+                    <div class="metric">
+                        <span class="metric-label">Total Requests</span>
+                        <span class="metric-value">500</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Requests/sec</span>
+                        <span class="metric-value">8.33</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Failed Requests</span>
+                        <span class="metric-value success">17</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Failure Rate</span>
+                        <span class="metric-value success">3.40%</span>
+                    </div>
+                </div>
+                
+                <div class="summary-card">
+                    <h3>Check Results</h3>
+                    <div class="metric">
+                        <span class="metric-label">Passed Checks</span>
+                        <span class="metric-value success">487</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Failed Checks</span>
+                        <span class="metric-value error">13</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Success Rate</span>
+                        <span class="metric-value success">97.40%</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="charts">
+            <div class="chart-grid">
+                <div class="chart-container">
+                    <h3>Response Time Over Time</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="responseTimeChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <h3>Requests Per Second</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="requestsChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <h3>Response Time Distribution</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="distributionChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <h3>Error Rate Over Time</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="errorRateChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="details" class="details-section">
+            <h2>Detailed Statistics</h2>
+            <table class="statistics-table">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Count</th>
+                        <th>Rate</th>
+                        <th>Average</th>
+                        <th>Min</th>
+                        <th>Median</th>
+                        <th>Max</th>
+                        <th>90th %</th>
+                        <th>95th %</th>
+                        <th>99th %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="status-indicator status-success"></span>HTTP Request Duration</td>
+                        <td>500</td>
+                        <td>8.33/s</td>
+                        <td>245.67ms</td>
+                        <td>89.12ms</td>
+                        <td>234.45ms</td>
+                        <td>1234.56ms</td>
+                        <td>456.78ms</td>
+                        <td>567.89ms</td>
+                        <td>890.12ms</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+    </div>
+    
+    <div class="footer">
+        <p>Report generated by K6 TypeScript Enhanced Reporter • 7/29/2025, 7:38:50 AM</p>
+    </div>
+    
+    <script>
+        const data = {"testName":"K6 Load Test","startTime":"2025-07-29T06:38:50.309Z","endTime":"2025-07-29T06:48:50.309Z","duration":600000,"summary":{"http_req_duration":{"avg":245.67,"min":89.12,"med":234.45,"max":1234.56,"p90":456.78,"p95":567.89,"p99":890.12},"http_req_failed":{"rate":0.034,"count":17,"total":500},"http_reqs":{"count":500,"rate":8.33},"vus":{"value":50,"max":100}},"checks":{"passed":487,"failed":13,"rate":0.974},"metrics":[{"name":"http_req_duration","type":"trend","values":[{"timestamp":"2025-07-29T06:28:50.309Z","value":298.9056982317221,"p95":831.4644007115186,"p99":1182.1810944639915},{"timestamp":"2025-07-29T06:28:56.309Z","value":429.346161242094,"p95":356.24710406497496,"p99":654.354237764702},{"timestamp":"2025-07-29T06:29:02.309Z","value":498.671965940778,"p95":688.7503503173073,"p99":798.1487994775648},{"timestamp":"2025-07-29T06:29:08.309Z","value":447.6292185410166,"p95":213.5476891839412,"p99":977.4927491648828},{"timestamp":"2025-07-29T06:29:14.309Z","value":560.2989708441206,"p95":450.0672317855624,"p99":559.8390515720093},{"timestamp":"2025-07-29T06:29:20.309Z","value":545.4864258641848,"p95":689.9926971363632,"p99":458.9693425163614},{"timestamp":"2025-07-29T06:29:26.309Z","value":268.0908085681967,"p95":516.8383641958906,"p99":709.5180393316149},{"timestamp":"2025-07-29T06:29:32.309Z","value":335.0942127734109,"p95":607.267542152382,"p99":420.8530600988975},{"timestamp":"2025-07-29T06:29:38.309Z","value":185.82041457824607,"p95":604.1031785084979,"p99":522.3976258369275},{"timestamp":"2025-07-29T06:29:44.309Z","value":400.54057826637745,"p95":893.5384337188269,"p99":1213.880891034437},{"timestamp":"2025-07-29T06:29:50.309Z","value":331.35968347546566,"p95":884.3228552668304,"p99":599.5307150391232},{"timestamp":"2025-07-29T06:29:56.309Z","value":214.97316048900495,"p95":279.52088042244463,"p99":503.550705604002},{"timestamp":"2025-07-29T06:30:02.309Z","value":448.7199906998316,"p95":379.71112067552167,"p99":480.9781628663851},{"timestamp":"2025-07-29T06:30:08.309Z","value":261.1583971961526,"p95":509.6204087821088,"p99":410.80613727436514},{"timestamp":"2025-07-29T06:30:14.309Z","value":396.8925809002386,"p95":535.122322650219,"p99":1034.6985780606299},{"timestamp":"2025-07-29T06:30:20.309Z","value":107.54498068148612,"p95":513.1726218757087,"p99":620.8939002121331},{"timestamp":"2025-07-29T06:30:26.309Z","value":293.8074388496499,"p95":652.5206691914692,"p99":591.2777125997345},{"timestamp":"2025-07-29T06:30:32.309Z","value":220.53494582674927,"p95":311.21385827791323,"p99":520.6403228356191},{"timestamp":"2025-07-29T06:30:38.309Z","value":280.63833114445805,"p95":243.35958897209906,"p99":682.5580115820484},{"timestamp":"2025-07-29T06:30:44.309Z","value":237.7371048305842,"p95":501.12257014128045,"p99":1247.8170695924257},{"timestamp":"2025-07-29T06:30:50.309Z","value":559.2302720080982,"p95":427.84102018385136,"p99":458.056326219874},{"timestamp":"2025-07-29T06:30:56.309Z","value":599.4080375391445,"p95":783.0636481825361,"p99":511.0626747379994},{"timestamp":"2025-07-29T06:31:02.309Z","value":379.981042358475,"p95":343.50842070581064,"p99":441.89405713376414},{"timestamp":"2025-07-29T06:31:08.309Z","value":407.9375358078846,"p95":766.1978274788655,"p99":578.2046895021515},{"timestamp":"2025-07-29T06:31:14.309Z","value":119.63546922030358,"p95":449.9764396148146,"p99":545.2391905862705},{"timestamp":"2025-07-29T06:31:20.309Z","value":452.8091798208718,"p95":854.006824130173,"p99":1107.8940610222653},{"timestamp":"2025-07-29T06:31:26.309Z","value":539.582512000231,"p95":242.08550325429053,"p99":1153.0503753957714},{"timestamp":"2025-07-29T06:31:32.309Z","value":505.7679834705278,"p95":667.456188581251,"p99":361.03556350799374},{"timestamp":"2025-07-29T06:31:38.309Z","value":348.1745989684778,"p95":332.1933838709323,"p99":316.0489433092155},{"timestamp":"2025-07-29T06:31:44.309Z","value":363.4631811298693,"p95":610.4121872394853,"p99":330.03109584691697},{"timestamp":"2025-07-29T06:31:50.309Z","value":306.0835939231862,"p95":358.0144096091211,"p99":1241.2506375227722},{"timestamp":"2025-07-29T06:31:56.309Z","value":116.65155629862191,"p95":263.02263198810033,"p99":535.152499619615},{"timestamp":"2025-07-29T06:32:02.309Z","value":191.4033665202041,"p95":680.0420901773192,"p99":1034.2458044682696},{"timestamp":"2025-07-29T06:32:08.309Z","value":232.31017249132893,"p95":744.6418253621829,"p99":921.7461953533856},{"timestamp":"2025-07-29T06:32:14.309Z","value":484.1377861478723,"p95":219.68939941972945,"p99":997.6246168072937},{"timestamp":"2025-07-29T06:32:20.309Z","value":251.93313184005785,"p95":467.8950350036068,"p99":507.15607387510437},{"timestamp":"2025-07-29T06:32:26.309Z","value":542.8751296814896,"p95":759.6458285915666,"p99":865.9701519332367},{"timestamp":"2025-07-29T06:32:32.309Z","value":582.5813573225093,"p95":758.1036174427873,"p99":363.8240777652603},{"timestamp":"2025-07-29T06:32:38.309Z","value":578.690931889174,"p95":487.19320101465973,"p99":1051.4384222725557},{"timestamp":"2025-07-29T06:32:44.309Z","value":506.6462799475864,"p95":372.6127778697705,"p99":1125.528649742177},{"timestamp":"2025-07-29T06:32:50.309Z","value":520.2193159906725,"p95":227.43671412481393,"p99":530.4849504419706},{"timestamp":"2025-07-29T06:32:56.309Z","value":414.56897035836727,"p95":401.7094587231573,"p99":569.0442410163573},{"timestamp":"2025-07-29T06:33:02.309Z","value":145.22467265200547,"p95":676.0131471207516,"p99":601.3691245770867},{"timestamp":"2025-07-29T06:33:08.309Z","value":362.4242201274457,"p95":689.0428581953636,"p99":1137.8168209434518},{"timestamp":"2025-07-29T06:33:14.309Z","value":328.60658580009897,"p95":866.1759043922019,"p99":791.7684771615718},{"timestamp":"2025-07-29T06:33:20.309Z","value":121.6807437502431,"p95":780.0405317924879,"p99":1199.7953205255526},{"timestamp":"2025-07-29T06:33:26.309Z","value":114.96203006622332,"p95":796.0014764305995,"p99":942.1505782015226},{"timestamp":"2025-07-29T06:33:32.309Z","value":456.2347767738172,"p95":876.9196900882722,"p99":1145.2938318047077},{"timestamp":"2025-07-29T06:33:38.309Z","value":136.37911316248665,"p95":806.0309844010519,"p99":790.5629989661726},{"timestamp":"2025-07-29T06:33:44.309Z","value":213.90707511374552,"p95":200.95306585246982,"p99":955.4677029045841},{"timestamp":"2025-07-29T06:33:50.309Z","value":384.7355730746636,"p95":353.4820721956754,"p99":703.7583836858621},{"timestamp":"2025-07-29T06:33:56.309Z","value":305.4703958116245,"p95":819.5155081793253,"p99":774.0395485301271},{"timestamp":"2025-07-29T06:34:02.309Z","value":445.90388341208313,"p95":585.6218325420075,"p99":325.9201800217745},{"timestamp":"2025-07-29T06:34:08.309Z","value":143.55625014518716,"p95":400.2272421895716,"p99":305.8072051185902},{"timestamp":"2025-07-29T06:34:14.309Z","value":205.98537279917798,"p95":783.3808325611147,"p99":979.9464584527761},{"timestamp":"2025-07-29T06:34:20.309Z","value":427.1651186034227,"p95":756.9868601339534,"p99":447.0368251113889},{"timestamp":"2025-07-29T06:34:26.309Z","value":293.3693022217434,"p95":457.9324803592702,"p99":1128.1115212779346},{"timestamp":"2025-07-29T06:34:32.309Z","value":194.9024998664798,"p95":468.65363754830344,"p99":762.8935029450734},{"timestamp":"2025-07-29T06:34:38.309Z","value":500.52877967741017,"p95":760.8754425238561,"p99":1165.5711252263873},{"timestamp":"2025-07-29T06:34:44.309Z","value":168.99775281951025,"p95":539.4565770475465,"p99":1102.2477115000434},{"timestamp":"2025-07-29T06:34:50.309Z","value":317.30481787217934,"p95":518.4602124780124,"p99":1174.7818194170386},{"timestamp":"2025-07-29T06:34:56.309Z","value":280.1888923577842,"p95":285.33327913130785,"p99":864.2373352409946},{"timestamp":"2025-07-29T06:35:02.309Z","value":473.1330745649383,"p95":626.2461297297993,"p99":1068.580541088444},{"timestamp":"2025-07-29T06:35:08.309Z","value":165.00735842142524,"p95":839.2520348450385,"p99":1212.2281228329914},{"timestamp":"2025-07-29T06:35:14.309Z","value":330.9895594786635,"p95":227.1997434617027,"p99":537.8844336254151},{"timestamp":"2025-07-29T06:35:20.309Z","value":399.8390599567594,"p95":559.5225935209804,"p99":917.5405405959342},{"timestamp":"2025-07-29T06:35:26.309Z","value":292.89371363840917,"p95":878.4467712773794,"p99":1089.8015160698505},{"timestamp":"2025-07-29T06:35:32.309Z","value":551.0500330637233,"p95":429.5412597419923,"p99":533.1397005711498},{"timestamp":"2025-07-29T06:35:38.309Z","value":564.6818949183596,"p95":358.36493437138563,"p99":1060.835062141545},{"timestamp":"2025-07-29T06:35:44.309Z","value":169.36990298758826,"p95":504.5354710335254,"p99":377.19914573042087},{"timestamp":"2025-07-29T06:35:50.309Z","value":403.0764403963606,"p95":490.128793786785,"p99":583.0865053953884},{"timestamp":"2025-07-29T06:35:56.309Z","value":260.28019423798213,"p95":688.4197785872211,"p99":386.2295583868629},{"timestamp":"2025-07-29T06:36:02.309Z","value":550.6163155266395,"p95":825.4656737996144,"p99":557.5776893542145},{"timestamp":"2025-07-29T06:36:08.309Z","value":276.9523620208271,"p95":682.7636086961325,"p99":855.9293498624615},{"timestamp":"2025-07-29T06:36:14.309Z","value":242.11341508768604,"p95":447.3344837453082,"p99":1235.6416450773636},{"timestamp":"2025-07-29T06:36:20.309Z","value":266.18912687861973,"p95":430.4874125852614,"p99":530.039982008242},{"timestamp":"2025-07-29T06:36:26.309Z","value":274.8045812917617,"p95":510.4457794955729,"p99":480.0935300664586},{"timestamp":"2025-07-29T06:36:32.309Z","value":539.3966047600435,"p95":721.6661818803643,"p99":1241.397986724368},{"timestamp":"2025-07-29T06:36:38.309Z","value":326.8913523472836,"p95":787.5847369207106,"p99":419.27065078739196},{"timestamp":"2025-07-29T06:36:44.309Z","value":215.472492635064,"p95":378.03381382576185,"p99":689.3458962832883},{"timestamp":"2025-07-29T06:36:50.309Z","value":170.8434597960863,"p95":611.2893549071605,"p99":1168.6351089000527},{"timestamp":"2025-07-29T06:36:56.309Z","value":529.8317777338755,"p95":755.6081594171034,"p99":1162.6923318845068},{"timestamp":"2025-07-29T06:37:02.309Z","value":465.37067149145696,"p95":659.447415854838,"p99":454.56690850010824},{"timestamp":"2025-07-29T06:37:08.309Z","value":545.5291879233587,"p95":725.997186950986,"p99":614.0610997350433},{"timestamp":"2025-07-29T06:37:14.309Z","value":322.43612302599706,"p95":655.3933941475,"p99":450.25293134121887},{"timestamp":"2025-07-29T06:37:20.309Z","value":147.56901242168132,"p95":397.0571478401373,"p99":716.0732167326706},{"timestamp":"2025-07-29T06:37:26.309Z","value":115.62608279618382,"p95":481.3226952533184,"p99":670.4178557702229},{"timestamp":"2025-07-29T06:37:32.309Z","value":378.8185903199115,"p95":521.5021553699692,"p99":1211.5314567623163},{"timestamp":"2025-07-29T06:37:38.309Z","value":526.5810415684318,"p95":315.8089839789499,"p99":858.424531842507},{"timestamp":"2025-07-29T06:37:44.309Z","value":455.88831142386323,"p95":511.00246917791736,"p99":1203.6145363227572},{"timestamp":"2025-07-29T06:37:50.309Z","value":547.0702079211771,"p95":474.66594979253125,"p99":1215.7394668887282},{"timestamp":"2025-07-29T06:37:56.309Z","value":131.8430434736856,"p95":732.308179690993,"p99":551.2196985445254},{"timestamp":"2025-07-29T06:38:02.309Z","value":122.42437228476435,"p95":254.38662087002348,"p99":1269.961867128448},{"timestamp":"2025-07-29T06:38:08.309Z","value":379.49848135781366,"p95":870.0894780678699,"p99":987.6375424269796},{"timestamp":"2025-07-29T06:38:14.309Z","value":566.375867790935,"p95":621.0872226726354,"p99":1088.0994970754082},{"timestamp":"2025-07-29T06:38:20.309Z","value":493.7775850378099,"p95":825.5772262852965,"p99":435.3908851697869},{"timestamp":"2025-07-29T06:38:26.309Z","value":174.12629657771373,"p95":241.31570132176623,"p99":471.0040574707863},{"timestamp":"2025-07-29T06:38:32.309Z","value":137.51297107191965,"p95":206.93267105919705,"p99":316.89005919440166},{"timestamp":"2025-07-29T06:38:38.309Z","value":165.0435778284243,"p95":693.8859340975457,"p99":479.92755578159495},{"timestamp":"2025-07-29T06:38:44.309Z","value":478.42216233591455,"p95":401.2834495071497,"p99":711.195263776591}]},{"name":"http_req_failed","type":"rate","values":[{"timestamp":"2025-07-29T06:28:50.309Z","rate":0.06122722310926996,"total":50},{"timestamp":"2025-07-29T06:28:56.309Z","rate":0.01177544984948844,"total":26},{"timestamp":"2025-07-29T06:29:02.309Z","rate":0.06598002783378575,"total":16},{"timestamp":"2025-07-29T06:29:08.309Z","rate":0.05133683729566696,"total":36},{"timestamp":"2025-07-29T06:29:14.309Z","rate":0.06874197324103158,"total":20},{"timestamp":"2025-07-29T06:29:20.309Z","rate":0.036243590904880274,"total":37},{"timestamp":"2025-07-29T06:29:26.309Z","rate":0.08004516504703013,"total":27},{"timestamp":"2025-07-29T06:29:32.309Z","rate":0.07988154103522711,"total":11},{"timestamp":"2025-07-29T06:29:38.309Z","rate":0.02300370929448885,"total":26},{"timestamp":"2025-07-29T06:29:44.309Z","rate":0.09443222996338299,"total":21},{"timestamp":"2025-07-29T06:29:50.309Z","rate":0.02982754974105084,"total":20},{"timestamp":"2025-07-29T06:29:56.309Z","rate":0.09310950730951416,"total":24},{"timestamp":"2025-07-29T06:30:02.309Z","rate":0.05090832889087287,"total":20},{"timestamp":"2025-07-29T06:30:08.309Z","rate":0.08293849678712162,"total":26},{"timestamp":"2025-07-29T06:30:14.309Z","rate":0.01628751377717044,"total":49},{"timestamp":"2025-07-29T06:30:20.309Z","rate":0.027447457875760996,"total":21},{"timestamp":"2025-07-29T06:30:26.309Z","rate":0.043894291626258714,"total":45},{"timestamp":"2025-07-29T06:30:32.309Z","rate":0.09659481284309611,"total":43},{"timestamp":"2025-07-29T06:30:38.309Z","rate":0.0937186087796081,"total":42},{"timestamp":"2025-07-29T06:30:44.309Z","rate":0.04552271657205434,"total":42},{"timestamp":"2025-07-29T06:30:50.309Z","rate":0.012431988742213474,"total":24},{"timestamp":"2025-07-29T06:30:56.309Z","rate":0.06652601944347662,"total":43},{"timestamp":"2025-07-29T06:31:02.309Z","rate":0.0663471301130144,"total":38},{"timestamp":"2025-07-29T06:31:08.309Z","rate":0.07197449807079086,"total":18},{"timestamp":"2025-07-29T06:31:14.309Z","rate":0.07689425160084261,"total":59},{"timestamp":"2025-07-29T06:31:20.309Z","rate":0.042297057386699956,"total":53},{"timestamp":"2025-07-29T06:31:26.309Z","rate":0.06780713942402294,"total":45},{"timestamp":"2025-07-29T06:31:32.309Z","rate":0.08125787741968876,"total":23},{"timestamp":"2025-07-29T06:31:38.309Z","rate":0.0747392554690697,"total":11},{"timestamp":"2025-07-29T06:31:44.309Z","rate":0.000762482948903509,"total":59},{"timestamp":"2025-07-29T06:31:50.309Z","rate":0.09537196211220417,"total":22},{"timestamp":"2025-07-29T06:31:56.309Z","rate":0.0599922337765187,"total":28},{"timestamp":"2025-07-29T06:32:02.309Z","rate":0.008368215801281066,"total":10},{"timestamp":"2025-07-29T06:32:08.309Z","rate":0.07075261634511039,"total":21},{"timestamp":"2025-07-29T06:32:14.309Z","rate":0.0606729517993859,"total":51},{"timestamp":"2025-07-29T06:32:20.309Z","rate":0.014473157196265652,"total":20},{"timestamp":"2025-07-29T06:32:26.309Z","rate":0.07446773855366003,"total":22},{"timestamp":"2025-07-29T06:32:32.309Z","rate":0.014434788897959927,"total":38},{"timestamp":"2025-07-29T06:32:38.309Z","rate":0.09347222265325933,"total":18},{"timestamp":"2025-07-29T06:32:44.309Z","rate":0.0017014116242645594,"total":15},{"timestamp":"2025-07-29T06:32:50.309Z","rate":0.09048961397772957,"total":41},{"timestamp":"2025-07-29T06:32:56.309Z","rate":0.0720737813236773,"total":22},{"timestamp":"2025-07-29T06:33:02.309Z","rate":0.07671756618913302,"total":54},{"timestamp":"2025-07-29T06:33:08.309Z","rate":0.010386648501354357,"total":36},{"timestamp":"2025-07-29T06:33:14.309Z","rate":0.07184794147486732,"total":35},{"timestamp":"2025-07-29T06:33:20.309Z","rate":0.0944937200369832,"total":26},{"timestamp":"2025-07-29T06:33:26.309Z","rate":0.010300859781243467,"total":23},{"timestamp":"2025-07-29T06:33:32.309Z","rate":0.06103895618928115,"total":11},{"timestamp":"2025-07-29T06:33:38.309Z","rate":0.08483138443774488,"total":42},{"timestamp":"2025-07-29T06:33:44.309Z","rate":0.0757513372910647,"total":23},{"timestamp":"2025-07-29T06:33:50.309Z","rate":0.03166634849062427,"total":45},{"timestamp":"2025-07-29T06:33:56.309Z","rate":0.07988947804781224,"total":47},{"timestamp":"2025-07-29T06:34:02.309Z","rate":0.037423422093606495,"total":37},{"timestamp":"2025-07-29T06:34:08.309Z","rate":0.016892003719824845,"total":52},{"timestamp":"2025-07-29T06:34:14.309Z","rate":0.09068429593770895,"total":25},{"timestamp":"2025-07-29T06:34:20.309Z","rate":0.01449318538833242,"total":45},{"timestamp":"2025-07-29T06:34:26.309Z","rate":0.014885898956018218,"total":23},{"timestamp":"2025-07-29T06:34:32.309Z","rate":0.06949854878954718,"total":30},{"timestamp":"2025-07-29T06:34:38.309Z","rate":0.06361567347805266,"total":35},{"timestamp":"2025-07-29T06:34:44.309Z","rate":0.049677805273928094,"total":57},{"timestamp":"2025-07-29T06:34:50.309Z","rate":0.028220948812606773,"total":36},{"timestamp":"2025-07-29T06:34:56.309Z","rate":0.034696061576712345,"total":35},{"timestamp":"2025-07-29T06:35:02.309Z","rate":0.09330194252335232,"total":50},{"timestamp":"2025-07-29T06:35:08.309Z","rate":0.02126418391702758,"total":48},{"timestamp":"2025-07-29T06:35:14.309Z","rate":0.08649201579711026,"total":12},{"timestamp":"2025-07-29T06:35:20.309Z","rate":0.07917758363498112,"total":17},{"timestamp":"2025-07-29T06:35:26.309Z","rate":0.08082308936618943,"total":52},{"timestamp":"2025-07-29T06:35:32.309Z","rate":0.002299691137511184,"total":47},{"timestamp":"2025-07-29T06:35:38.309Z","rate":0.03731880063787287,"total":41},{"timestamp":"2025-07-29T06:35:44.309Z","rate":0.008843540080536227,"total":45},{"timestamp":"2025-07-29T06:35:50.309Z","rate":0.00835697314166448,"total":42},{"timestamp":"2025-07-29T06:35:56.309Z","rate":0.016137940945739348,"total":59},{"timestamp":"2025-07-29T06:36:02.309Z","rate":0.08597762629696258,"total":51},{"timestamp":"2025-07-29T06:36:08.309Z","rate":0.036705879469558146,"total":17},{"timestamp":"2025-07-29T06:36:14.309Z","rate":0.07941581720005322,"total":40},{"timestamp":"2025-07-29T06:36:20.309Z","rate":0.030642391676363914,"total":50},{"timestamp":"2025-07-29T06:36:26.309Z","rate":0.07893444693203255,"total":16},{"timestamp":"2025-07-29T06:36:32.309Z","rate":0.033335369862791286,"total":47},{"timestamp":"2025-07-29T06:36:38.309Z","rate":0.049892742449821184,"total":36},{"timestamp":"2025-07-29T06:36:44.309Z","rate":0.0397449447203627,"total":30},{"timestamp":"2025-07-29T06:36:50.309Z","rate":0.09993305134539586,"total":53},{"timestamp":"2025-07-29T06:36:56.309Z","rate":0.004985823481512242,"total":43},{"timestamp":"2025-07-29T06:37:02.309Z","rate":0.0951343456129523,"total":38},{"timestamp":"2025-07-29T06:37:08.309Z","rate":0.025799132897849453,"total":44},{"timestamp":"2025-07-29T06:37:14.309Z","rate":0.019096384780052558,"total":22},{"timestamp":"2025-07-29T06:37:20.309Z","rate":0.09326859566136823,"total":37},{"timestamp":"2025-07-29T06:37:26.309Z","rate":0.0737621768445021,"total":25},{"timestamp":"2025-07-29T06:37:32.309Z","rate":0.01938731382720469,"total":42},{"timestamp":"2025-07-29T06:37:38.309Z","rate":0.011763090449015535,"total":25},{"timestamp":"2025-07-29T06:37:44.309Z","rate":0.027192187785532743,"total":47},{"timestamp":"2025-07-29T06:37:50.309Z","rate":0.09782884124335854,"total":32},{"timestamp":"2025-07-29T06:37:56.309Z","rate":0.05787114041169799,"total":16},{"timestamp":"2025-07-29T06:38:02.309Z","rate":0.08748944307412876,"total":19},{"timestamp":"2025-07-29T06:38:08.309Z","rate":0.09052007243845737,"total":51},{"timestamp":"2025-07-29T06:38:14.309Z","rate":0.007531442028804314,"total":43},{"timestamp":"2025-07-29T06:38:20.309Z","rate":0.003325589824754083,"total":25},{"timestamp":"2025-07-29T06:38:26.309Z","rate":0.09952786834649903,"total":43},{"timestamp":"2025-07-29T06:38:32.309Z","rate":0.01702691906982723,"total":16},{"timestamp":"2025-07-29T06:38:38.309Z","rate":0.08410833916747346,"total":47},{"timestamp":"2025-07-29T06:38:44.309Z","rate":0.01941883746272373,"total":57}]},{"name":"http_reqs","type":"counter","values":[{"timestamp":"2025-07-29T06:28:50.310Z","count":1,"rate":0.16666666666666666},{"timestamp":"2025-07-29T06:28:56.310Z","count":2,"rate":0.16666666666666666},{"timestamp":"2025-07-29T06:29:02.310Z","count":5,"rate":0.5},{"timestamp":"2025-07-29T06:29:08.310Z","count":14,"rate":1.5},{"timestamp":"2025-07-29T06:29:14.310Z","count":22,"rate":1.3333333333333333},{"timestamp":"2025-07-29T06:29:20.310Z","count":28,"rate":1},{"timestamp":"2025-07-29T06:29:26.310Z","count":38,"rate":1.6666666666666667},{"timestamp":"2025-07-29T06:29:32.310Z","count":41,"rate":0.5},{"timestamp":"2025-07-29T06:29:38.310Z","count":44,"rate":0.5},{"timestamp":"2025-07-29T06:29:44.310Z","count":51,"rate":1.1666666666666667},{"timestamp":"2025-07-29T06:29:50.310Z","count":60,"rate":1.5},{"timestamp":"2025-07-29T06:29:56.310Z","count":70,"rate":1.6666666666666667},{"timestamp":"2025-07-29T06:30:02.310Z","count":76,"rate":1},{"timestamp":"2025-07-29T06:30:08.310Z","count":84,"rate":1.3333333333333333},{"timestamp":"2025-07-29T06:30:14.310Z","count":94,"rate":1.6666666666666667},{"timestamp":"2025-07-29T06:30:20.310Z","count":95,"rate":0.16666666666666666},{"timestamp":"2025-07-29T06:30:26.310Z","count":103,"rate":1.3333333333333333},{"timestamp":"2025-07-29T06:30:32.310Z","count":112,"rate":1.5},{"timestamp":"2025-07-29T06:30:38.310Z","count":114,"rate":0.3333333333333333},{"timestamp":"2025-07-29T06:30:44.310Z","count":120,"rate":1},{"timestamp":"2025-07-29T06:30:50.310Z","count":123,"rate":0.5},{"timestamp":"2025-07-29T06:30:56.310Z","count":128,"rate":0.8333333333333334},{"timestamp":"2025-07-29T06:31:02.310Z","count":130,"rate":0.3333333333333333},{"timestamp":"2025-07-29T06:31:08.310Z","count":132,"rate":0.3333333333333333},{"timestamp":"2025-07-29T06:31:14.310Z","count":138,"rate":1},{"timestamp":"2025-07-29T06:31:20.310Z","count":142,"rate":0.6666666666666666},{"timestamp":"2025-07-29T06:31:26.310Z","count":149,"rate":1.1666666666666667},{"timestamp":"2025-07-29T06:31:32.310Z","count":156,"rate":1.1666666666666667},{"timestamp":"2025-07-29T06:31:38.310Z","count":165,"rate":1.5},{"timestamp":"2025-07-29T06:31:44.310Z","count":167,"rate":0.3333333333333333},{"timestamp":"2025-07-29T06:31:50.310Z","count":173,"rate":1},{"timestamp":"2025-07-29T06:31:56.310Z","count":182,"rate":1.5},{"timestamp":"2025-07-29T06:32:02.310Z","count":190,"rate":1.3333333333333333},{"timestamp":"2025-07-29T06:32:08.310Z","count":193,"rate":0.5},{"timestamp":"2025-07-29T06:32:14.310Z","count":200,"rate":1.1666666666666667},{"timestamp":"2025-07-29T06:32:20.310Z","count":206,"rate":1},{"timestamp":"2025-07-29T06:32:26.310Z","count":212,"rate":1},{"timestamp":"2025-07-29T06:32:32.310Z","count":214,"rate":0.3333333333333333},{"timestamp":"2025-07-29T06:32:38.310Z","count":223,"rate":1.5},{"timestamp":"2025-07-29T06:32:44.310Z","count":226,"rate":0.5},{"timestamp":"2025-07-29T06:32:50.310Z","count":232,"rate":1},{"timestamp":"2025-07-29T06:32:56.310Z","count":241,"rate":1.5},{"timestamp":"2025-07-29T06:33:02.310Z","count":251,"rate":1.6666666666666667},{"timestamp":"2025-07-29T06:33:08.310Z","count":255,"rate":0.6666666666666666},{"timestamp":"2025-07-29T06:33:14.310Z","count":261,"rate":1},{"timestamp":"2025-07-29T06:33:20.310Z","count":268,"rate":1.1666666666666667},{"timestamp":"2025-07-29T06:33:26.310Z","count":273,"rate":0.8333333333333334},{"timestamp":"2025-07-29T06:33:32.310Z","count":277,"rate":0.6666666666666666},{"timestamp":"2025-07-29T06:33:38.310Z","count":284,"rate":1.1666666666666667},{"timestamp":"2025-07-29T06:33:44.310Z","count":292,"rate":1.3333333333333333},{"timestamp":"2025-07-29T06:33:50.310Z","count":297,"rate":0.8333333333333334},{"timestamp":"2025-07-29T06:33:56.310Z","count":302,"rate":0.8333333333333334},{"timestamp":"2025-07-29T06:34:02.310Z","count":311,"rate":1.5},{"timestamp":"2025-07-29T06:34:08.310Z","count":312,"rate":0.16666666666666666},{"timestamp":"2025-07-29T06:34:14.310Z","count":321,"rate":1.5},{"timestamp":"2025-07-29T06:34:20.310Z","count":327,"rate":1},{"timestamp":"2025-07-29T06:34:26.310Z","count":336,"rate":1.5},{"timestamp":"2025-07-29T06:34:32.310Z","count":338,"rate":0.3333333333333333},{"timestamp":"2025-07-29T06:34:38.310Z","count":342,"rate":0.6666666666666666},{"timestamp":"2025-07-29T06:34:44.310Z","count":351,"rate":1.5},{"timestamp":"2025-07-29T06:34:50.310Z","count":361,"rate":1.6666666666666667},{"timestamp":"2025-07-29T06:34:56.310Z","count":362,"rate":0.16666666666666666},{"timestamp":"2025-07-29T06:35:02.310Z","count":366,"rate":0.6666666666666666},{"timestamp":"2025-07-29T06:35:08.310Z","count":372,"rate":1},{"timestamp":"2025-07-29T06:35:14.310Z","count":375,"rate":0.5},{"timestamp":"2025-07-29T06:35:20.310Z","count":377,"rate":0.3333333333333333},{"timestamp":"2025-07-29T06:35:26.310Z","count":379,"rate":0.3333333333333333},{"timestamp":"2025-07-29T06:35:32.310Z","count":382,"rate":0.5},{"timestamp":"2025-07-29T06:35:38.310Z","count":384,"rate":0.3333333333333333},{"timestamp":"2025-07-29T06:35:44.310Z","count":388,"rate":0.6666666666666666},{"timestamp":"2025-07-29T06:35:50.310Z","count":396,"rate":1.3333333333333333},{"timestamp":"2025-07-29T06:35:56.310Z","count":404,"rate":1.3333333333333333},{"timestamp":"2025-07-29T06:36:02.310Z","count":408,"rate":0.6666666666666666},{"timestamp":"2025-07-29T06:36:08.310Z","count":413,"rate":0.8333333333333334},{"timestamp":"2025-07-29T06:36:14.310Z","count":423,"rate":1.6666666666666667},{"timestamp":"2025-07-29T06:36:20.310Z","count":430,"rate":1.1666666666666667},{"timestamp":"2025-07-29T06:36:26.310Z","count":433,"rate":0.5},{"timestamp":"2025-07-29T06:36:32.310Z","count":436,"rate":0.5},{"timestamp":"2025-07-29T06:36:38.310Z","count":441,"rate":0.8333333333333334},{"timestamp":"2025-07-29T06:36:44.310Z","count":448,"rate":1.1666666666666667},{"timestamp":"2025-07-29T06:36:50.310Z","count":456,"rate":1.3333333333333333},{"timestamp":"2025-07-29T06:36:56.310Z","count":461,"rate":0.8333333333333334},{"timestamp":"2025-07-29T06:37:02.310Z","count":470,"rate":1.5},{"timestamp":"2025-07-29T06:37:08.310Z","count":479,"rate":1.5},{"timestamp":"2025-07-29T06:37:14.310Z","count":488,"rate":1.5},{"timestamp":"2025-07-29T06:37:20.310Z","count":489,"rate":0.16666666666666666},{"timestamp":"2025-07-29T06:37:26.310Z","count":496,"rate":1.1666666666666667},{"timestamp":"2025-07-29T06:37:32.310Z","count":499,"rate":0.5},{"timestamp":"2025-07-29T06:37:38.310Z","count":500,"rate":0.16666666666666666},{"timestamp":"2025-07-29T06:37:44.310Z","count":507,"rate":1.1666666666666667},{"timestamp":"2025-07-29T06:37:50.310Z","count":512,"rate":0.8333333333333334},{"timestamp":"2025-07-29T06:37:56.310Z","count":520,"rate":1.3333333333333333},{"timestamp":"2025-07-29T06:38:02.310Z","count":522,"rate":0.3333333333333333},{"timestamp":"2025-07-29T06:38:08.310Z","count":526,"rate":0.6666666666666666},{"timestamp":"2025-07-29T06:38:14.310Z","count":529,"rate":0.5},{"timestamp":"2025-07-29T06:38:20.310Z","count":534,"rate":0.8333333333333334},{"timestamp":"2025-07-29T06:38:26.310Z","count":541,"rate":1.1666666666666667},{"timestamp":"2025-07-29T06:38:32.310Z","count":547,"rate":1},{"timestamp":"2025-07-29T06:38:38.310Z","count":550,"rate":0.5},{"timestamp":"2025-07-29T06:38:44.310Z","count":556,"rate":1}]}]};
+        
+        // Response Time Chart
+        const ctx1 = document.getElementById('responseTimeChart').getContext('2d');
+        new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: data.metrics[0].values.map(v => new Date(v.timestamp).toLocaleTimeString()),
+                datasets: [{
+                    label: 'Average Response Time',
+                    data: data.metrics[0].values.map(v => v.value),
+                    borderColor: 'rgb(102, 126, 234)',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    tension: 0.1
+                }, {
+                    label: '95th Percentile',
+                    data: data.metrics[0].values.map(v => v.p95),
+                    borderColor: 'rgb(243, 156, 18)',
+                    backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Response Time (ms)'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Requests Chart
+        const ctx2 = document.getElementById('requestsChart').getContext('2d');
+        new Chart(ctx2, {
+            type: 'line',
+            data: {
+                labels: data.metrics[2].values.map(v => new Date(v.timestamp).toLocaleTimeString()),
+                datasets: [{
+                    label: 'Requests/sec',
+                    data: data.metrics[2].values.map(v => v.rate),
+                    borderColor: 'rgb(39, 174, 96)',
+                    backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Requests/sec'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Distribution Chart
+        const ctx3 = document.getElementById('distributionChart').getContext('2d');
+        new Chart(ctx3, {
+            type: 'bar',
+            data: {
+                labels: ['<100ms', '100-200ms', '200-500ms', '500ms-1s', '>1s'],
+                datasets: [{
+                    label: 'Request Count',
+                    data: [45, 123, 234, 78, 20],
+                    backgroundColor: [
+                        'rgba(39, 174, 96, 0.8)',
+                        'rgba(52, 152, 219, 0.8)',
+                        'rgba(243, 156, 18, 0.8)',
+                        'rgba(230, 126, 34, 0.8)',
+                        'rgba(231, 76, 60, 0.8)'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Request Count'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Error Rate Chart
+        const ctx4 = document.getElementById('errorRateChart').getContext('2d');
+        new Chart(ctx4, {
+            type: 'line',
+            data: {
+                labels: data.metrics[1].values.map(v => new Date(v.timestamp).toLocaleTimeString()),
+                datasets: [{
+                    label: 'Error Rate %',
+                    data: data.metrics[1].values.map(v => v.rate * 100),
+                    borderColor: 'rgb(231, 76, 60)',
+                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 10,
+                        title: {
+                            display: true,
+                            text: 'Error Rate (%)'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Navigation
+        document.querySelectorAll('.nav a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.querySelectorAll('.nav a').forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+                
+                const target = link.getAttribute('href').substring(1);
+                document.getElementById(target).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+</body>
+</html>
